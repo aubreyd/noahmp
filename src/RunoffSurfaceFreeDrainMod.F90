@@ -42,6 +42,7 @@ contains
     real(kind=kind_noahmp) :: SoilWatConductivity                          ! soil water conductivity [m/s]
     real(kind=kind_noahmp) :: SoilWatHoldCap                               ! soil moisture holding capacity [m3/m3]
     real(kind=kind_noahmp) :: InfilRateMax                                 ! maximum infiltration rate [m/s]
+    real(kind=kind_noahmp) :: ImpervFracEff                                ! effective impervious surface fraction
     real(kind=kind_noahmp), allocatable, dimension(:) :: SoilWatMaxHold    ! maximum soil water that can hold [m]
 
 ! --------------------------------------------------------------------
@@ -49,6 +50,8 @@ contains
               NumSoilLayer        => noahmp%config%domain%NumSoilLayer      ,& ! in,  number of soil layers
               DepthSoilLayer      => noahmp%config%domain%DepthSoilLayer    ,& ! in,  depth [m] of layer-bottom from soil surface
               FlagUrban           => noahmp%config%domain%FlagUrban         ,& ! in,  logical flag for urban grid
+              OptImpervious       => noahmp%config%nmlist%OptImpervious     ,& ! in,  options for impervious surface adjustment
+              ImpervFracSfc       => noahmp%water%param%ImpervFracSfc       ,& ! in,  impervious surface fraction from land-use input
               SoilLiqWater        => noahmp%water%state%SoilLiqWater        ,& ! in,  soil water content [m3/m3]
               SoilIce             => noahmp%water%state%SoilIce             ,& ! in,  soil ice content [m3/m3]
               SoilIceMax          => noahmp%water%state%SoilIceMax          ,& ! in,  maximum soil ice content [m3/m3]
@@ -110,6 +113,12 @@ contains
        ! jref for urban areas
        ! if ( FlagUrban .eqv. .true. ) InfilRateMax == InfilRateMax * 0.05
 
+       ! impervious surface fraction runs off directly (WRF-Hydro OPT_IMPERV 1 & 2;
+       ! options 0 and 9 have no impervious adjustment here)
+       ImpervFracEff = 0.0
+       if ( OptImpervious == 1 ) ImpervFracEff = ImpervFracSfc
+       if ( OptImpervious == 2 ) ImpervFracEff = 0.0015 * ((100.0 * ImpervFracSfc)**1.41)   ! Alley & Veenhuis
+
        ! soil hydraulic conductivity and diffusivity
        call SoilDiffusivityConductivityOpt2(noahmp, SoilWatDiffusivity, SoilWatConductivity, SoilLiqWater(1), SoilIceMax, 1)
 
@@ -117,7 +126,8 @@ contains
        InfilRateMax = min(InfilRateMax, WaterInSfc/TimeStep)
 
        ! compute surface runoff and infiltration rate
-       RunoffSurface = max(0.0, SoilSfcInflowMean-InfilRateMax)
+       RunoffSurface = SoilSfcInflowMean * ImpervFracEff + &
+                       max(0.0, SoilSfcInflowMean * (1.0 - ImpervFracEff) - InfilRateMax)
        InfilRateSfc  = SoilSfcInflowMean - RunoffSurface
 
     endif ! SoilSfcInflowMean > 0.0

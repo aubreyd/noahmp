@@ -96,6 +96,11 @@ module ConfigVarType
                                               ! 0 -> No tile drainage
                                               ! 1 -> on (simple scheme)
                                               ! 2 -> on (Hooghoudt's scheme)
+    integer :: OptImpervious               ! options for impervious surface runoff adjustment
+                                              ! 0 -> no impervious adjustment
+                                              ! 1 -> total impervious fraction (ImpervFracSfc)
+                                              ! 2 -> effective impervious fraction (Alley & Veenhuis)
+                                              ! 9 -> fixed 0.95 for urban grids (default)
     integer :: OptIrrigation               ! options for irrigation
                                               ! 0 -> No irrigation
                                               ! 1 -> Irrigation ON

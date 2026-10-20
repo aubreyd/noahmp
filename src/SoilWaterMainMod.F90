@@ -55,6 +55,7 @@ contains
     real(kind=kind_noahmp)            :: InfilSfcAcc                  ! accumulated infiltration rate [m/s]
     real(kind=kind_noahmp)            :: SoilSubsurfDef               ! accumulated subsurface deficit from negative-SH2O floor [m]
     real(kind=kind_noahmp)            :: SubDeficit                   ! per-iteration subsurface deficit [m]
+    real(kind=kind_noahmp)            :: ImpervFracEff                ! effective impervious surface fraction
     real(kind=kind_noahmp), parameter :: SoilImpPara = 4.0            ! soil impervious fraction parameter
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatRight     ! right-hand side term of the matrix
     real(kind=kind_noahmp), allocatable, dimension(:) :: MatLeft1     ! left-hand side term
@@ -73,6 +74,8 @@ contains
               OptRunoffSubsurface    => noahmp%config%nmlist%OptRunoffSubsurface    ,& ! in,    options for subsurface runoff
               OptTileDrainage        => noahmp%config%nmlist%OptTileDrainage        ,& ! in,    options for tile drainage
               OptWetlandModel        => noahmp%config%nmlist%OptWetlandModel        ,& ! in,    options for wetland model
+              OptImpervious          => noahmp%config%nmlist%OptImpervious          ,& ! in,    options for impervious surface adjustment
+              ImpervFracSfc          => noahmp%water%param%ImpervFracSfc            ,& ! in,    impervious surface fraction from land-use input
               SoilIce                => noahmp%water%state%SoilIce                  ,& ! in,    soil ice content [m3/m3]
               TileDrainFrac          => noahmp%water%state%TileDrainFrac            ,& ! in,    tile drainage map (fraction)
               SoilSfcInflowMean      => noahmp%water%flux%SoilSfcInflowMean         ,& ! in,    mean water input on soil surface [m/s]
@@ -143,8 +146,20 @@ contains
     ! subsurface runoff for runoff scheme option 2
     if ( OptRunoffSubsurface == 2 ) call RunoffSubSurfaceEquiWaterTable(noahmp)
 
-    ! jref impermable surface at urban
-    if ( FlagUrban .eqv. .true. ) SoilImpervFrac(1) = 0.95
+    ! impervious surface adjustment of the top-layer impermeable fraction, as an
+    ! area-mean of impervious and frozen-soil fractions (WRF-Hydro OPT_IMPERV);
+    ! runoff option 3 applies its own impervious split in RunoffSurfaceFreeDrain
+    if ( (OptImpervious == 1) .or. (OptImpervious == 2) ) then
+       if ( OptImpervious == 1 ) then
+          ImpervFracEff = ImpervFracSfc
+       else
+          ImpervFracEff = 0.0015 * ((100.0 * ImpervFracSfc)**1.41)   ! Alley & Veenhuis
+       endif
+       SoilImpervFrac(1) = ImpervFracEff + (1.0 - ImpervFracEff) * SoilImpervFrac(1)
+    elseif ( OptImpervious == 9 ) then
+       ! jref impermable surface at urban
+       if ( FlagUrban .eqv. .true. ) SoilImpervFrac(1) = 0.95
+    endif
 
     ! surface runoff and infiltration rate using different schemes
     if ( OptRunoffSurface == 1 ) call RunoffSurfaceTopModelGrd(noahmp)

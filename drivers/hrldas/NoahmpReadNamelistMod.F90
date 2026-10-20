@@ -93,7 +93,7 @@ contains
     integer                 :: soil_data_option                   = 1
     integer                 :: pedotransfer_option                = 1
     integer                 :: crop_option                        = 0
-    integer                 :: imperv_option                      = 0  ! WRF-Hydro-only: impervious-surface option
+    integer                 :: imperv_option                      = 9  ! WRF-Hydro-only: impervious-surface option (9 = urban 0.95, legacy default)
     integer                 :: irrigation_option                  = 0
     integer                 :: irrigation_method                  = 0
     integer                 :: dvic_infiltration_option           = 1

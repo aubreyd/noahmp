@@ -326,6 +326,7 @@ contains
     noahmp%water%param%IrriMicroRate               = undefined_real
     noahmp%water%param%SoilInfilMaxCoeff           = undefined_real
     noahmp%water%param%SoilImpervFracCoeff         = undefined_real
+    noahmp%water%param%ImpervFracSfc               = 0.0
     noahmp%water%param%InfilFacVic                 = undefined_real
     noahmp%water%param%TensionWatDistrInfl         = undefined_real
     noahmp%water%param%TensionWatDistrShp          = undefined_real

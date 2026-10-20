@@ -41,6 +41,7 @@ contains
     noahmp%config%nmlist%OptSoilPermeabilityFrozen   = undefined_int
     noahmp%config%nmlist%OptDynVicInfiltration       = undefined_int
     noahmp%config%nmlist%OptTileDrainage             = undefined_int
+    noahmp%config%nmlist%OptImpervious               = 9
     noahmp%config%nmlist%OptIrrigation               = undefined_int
     noahmp%config%nmlist%OptIrrigationMethod         = undefined_int
     noahmp%config%nmlist%OptCropModel                = undefined_int

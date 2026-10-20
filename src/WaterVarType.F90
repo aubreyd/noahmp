@@ -214,6 +214,7 @@ module WaterVarType
     real(kind=kind_noahmp) :: IrriMicroRate              ! micro irrigation rate [mm/hr]
     real(kind=kind_noahmp) :: SoilInfilMaxCoeff          ! parameter to calculate maximum soil infiltration rate
     real(kind=kind_noahmp) :: SoilImpervFracCoeff        ! parameter to calculate frozen soil impermeable fraction
+    real(kind=kind_noahmp) :: ImpervFracSfc              ! impervious surface fraction from land-use input (0-1)
     real(kind=kind_noahmp) :: InfilFacVic                ! VIC model infiltration parameter
     real(kind=kind_noahmp) :: TensionWatDistrInfl        ! Tension water distribution inflection parameter
     real(kind=kind_noahmp) :: TensionWatDistrShp         ! Tension water distribution shape parameter
