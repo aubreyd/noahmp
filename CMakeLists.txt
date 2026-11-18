@@ -11,9 +11,11 @@ file(GLOB NOAHMP_SUBMODULE_UTILITY_SOURCES
 )
 
 # Select specific driver files needed for WRF-Hydro integration.
-# Excludes NoahmpDriverMainMod (depends on module_ra_gfdleta),
-# NoahmpInitMainMod/NoahmpSnowInitMod/NoahmpGroundwaterInitMod (standalone init),
-# and GroundWaterMmfMod (WRF-Hydro uses its own groundwater module).
+# Excludes NoahmpDriverMainMod (depends on module_ra_gfdleta)
+# and NoahmpInitMainMod/NoahmpSnowInitMod/NoahmpGroundwaterInitMod (standalone init).
+# GroundWaterMmfMod is included: WRF-Hydro calls WTABLE_mmf_noahmp for the
+# per-timestep MMF groundwater update (RUNOFF_OPTION=5). It moved from src/ to
+# drivers/hrldas/ in Noah-MP v5.1.1, so the src/*.F90 glob no longer finds it.
 # NoahmpReadNamelistMod is now used as the NOAHLSM_OFFLINE reader (locally
 # patched: WRF_HYDRO-only vars moved to hydro.namelist, RUNOFF_OPTION kept as
 # a deprecated alias, and forcing_name_LF/imperv_option/rst_bi_in/rst_bi_out
@@ -34,6 +36,7 @@ set(NOAHMP_SUBMODULE_DRIVER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/drivers/hrldas/WaterVarOutTransferMod.F90
     ${CMAKE_CURRENT_SOURCE_DIR}/drivers/hrldas/BiochemVarInTransferMod.F90
     ${CMAKE_CURRENT_SOURCE_DIR}/drivers/hrldas/BiochemVarOutTransferMod.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/drivers/hrldas/GroundWaterMmfMod.F90
 )
 
 add_library(noahmp_submodule STATIC
