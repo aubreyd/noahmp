@@ -76,7 +76,7 @@ contains
     integer                 :: btr_option                         = 1
     integer                 :: surface_runoff_option              = 3
     integer                 :: runoff_option                      = -9999  ! deprecated alias for surface_runoff_option
-    integer                 :: subsurface_runoff_option           = 3
+    integer                 :: subsurface_runoff_option           = -9999  ! unset -> follows surface_runoff_option (see below)
     integer                 :: surface_drag_option                = 1
     integer                 :: supercooled_water_option           = 1
     integer                 :: frozen_soil_option                 = 1
@@ -222,6 +222,13 @@ contains
        write(*,'(" ***** NOAHLSM_OFFLINE: RUNOFF_OPTION is deprecated, use SURFACE_RUNOFF_OPTION. ", &
                  "Honoring RUNOFF_OPTION = ", I4)') runoff_option
        surface_runoff_option = runoff_option
+    endif
+    ! SUBSURFACE_RUNOFF_OPTION was never read by WRF-Hydro (the single
+    ! RUNOFF_OPTION drove both surface and subsurface runoff), and upstream only
+    ! tests matching pairs. If it is not set explicitly, use the surface runoff
+    ! option so existing namelists keep their previous behavior.
+    if (subsurface_runoff_option == -9999) then
+       subsurface_runoff_option = surface_runoff_option
     endif
 
     NoahmpIO%DTBL            = real(noah_timestep)
