@@ -6,6 +6,9 @@ module ResistanceAboveCanopyMostMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef MPP_LAND
+  use module_mpp_land, only : mpp_land_abort
+#endif
 
   implicit none
 
@@ -41,9 +44,7 @@ contains
     real(kind=kind_noahmp)                :: FH2NEW                      ! stability correction factor, sen heat, for current moz
     real(kind=kind_noahmp)                :: TMP12,TMP22,TMP32           ! temporary calculation
     real(kind=kind_noahmp)                :: CMFM, CHFH, CM2FM2, CH2FH2  ! temporary calculation
-    real(kind=kind_noahmp)                :: RefHeightAboveSfcEff        ! locally-clamped
-                                                                          ! (RefHeightAboveGrd - ZeroPlaneDispSfc), see rationale below
-    integer, save                         :: RefHeightWarnCount = 0      ! per-rank throttle counter
+    real(kind=kind_noahmp)                :: RefHeightAboveSfcEff        ! RefHeightAboveGrd - ZeroPlaneDispSfc [m]
 
 ! --------------------------------------------------------------------
     associate(                                                                    &
@@ -75,22 +76,22 @@ contains
     ! initialization
     MPE    = 1.0e-6
     MOZOLD = MoStabParaAbvCan  ! M-O stability parameter for next iteration
-    ! This used to be a fatal `stop` guarding the log() calls below against a
-    ! non-positive argument. A hard stop here kills one MPI rank without
-    ! calling MPI_Finalize, which deadlocks the rest of a parallel run the
-    ! next time any other rank needs to communicate with it. Rather than
-    ! mutate the shared, persistent RefHeightAboveGrd state (read by other
-    ! routines this timestep), clamp only the local height-difference used in
-    ! the two log() calls immediately below, and warn (throttled) instead of
-    ! stopping.
+    ! The log() calls below need RefHeightAboveGrd > ZeroPlaneDispSfc. On the
+    ! WRF-Hydro path GroundRoughnessProperty gives RefHeightAboveGrd >=
+    ! ZeroPlaneDispSfc + RefHeightAboveSfc, with
+    ! RefHeightAboveSfc = ZLVL > 0, so a violation means bad input (e.g. a bad
+    ! forcing height reaching the bridge) and must stop the run rather than be
+    ! clamped. A bare `stop` on one MPI rank deadlocks the others, so under
+    ! MPP_LAND abort all ranks with MPI_Abort instead.
     RefHeightAboveSfcEff = RefHeightAboveGrd - ZeroPlaneDispSfc
     if ( RefHeightAboveSfcEff <= 0.0 ) then
-       RefHeightWarnCount = RefHeightWarnCount + 1
-       if ( RefHeightWarnCount <= 20 .or. mod(RefHeightWarnCount, 10000) == 0 ) then
-          write(*,*) "WARNING: RefHeightAboveGrd <= ZeroPlaneDispSfc (occurrence #", RefHeightWarnCount, "on this rank)"
-          if ( RefHeightWarnCount == 20 ) write(*,*) "WARNING: further occurrences on this rank logged only every 10000th time"
-       endif
-       RefHeightAboveSfcEff = RoughLenMomSfc  ! small positive floor -> TMPCM = log(1) = 0
+       write(*,*) "FATAL: RefHeightAboveGrd <= ZeroPlaneDispSfc in ResistanceAboveCanopyMostMod.F90: RefHeightAboveGrd =", &
+                  RefHeightAboveGrd, " ZeroPlaneDispSfc =", ZeroPlaneDispSfc
+#ifdef MPP_LAND
+       call mpp_land_abort()
+#else
+       stop "Error in ResistanceAboveCanopyMostMod.F90"
+#endif
     endif
 
     ! temporary drag coefficients

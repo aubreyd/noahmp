@@ -6,6 +6,9 @@ module ResistanceBareGroundMostMod
   use Machine
   use NoahmpVarType
   use ConstantDefineMod
+#ifdef MPP_LAND
+  use module_mpp_land, only : mpp_land_abort
+#endif
 
   implicit none
 
@@ -42,9 +45,7 @@ contains
     real(kind=kind_noahmp)                :: FH2NEW                      ! stability correction factor, sen heat, for current moz
     real(kind=kind_noahmp)                :: TMP12,TMP22,TMP32           ! temporary calculation
     real(kind=kind_noahmp)                :: CMFM, CHFH, CM2FM2, CH2FH2  ! temporary calculation
-    real(kind=kind_noahmp)                :: RefHeightAboveGrdEff        ! locally-clamped
-                                                                          ! (RefHeightAboveGrd - ZeroPlaneDispGrd), see rationale below
-    integer, save                         :: RefHeightWarnCount = 0      ! per-rank throttle counter
+    real(kind=kind_noahmp)                :: RefHeightAboveGrdEff        ! RefHeightAboveGrd - ZeroPlaneDispGrd [m]
 
 ! --------------------------------------------------------------------
     associate(                                                                     &
@@ -76,17 +77,22 @@ contains
     ! initialization
     MPE    = 1.0e-6
     MOZOLD = MoStabParaBare  ! M-O stability parameter for next iteration
-    ! See the matching rationale in ResistanceAboveCanopyMostMod.F90 -- clamp
-    ! only the local height-difference used in the log() calls below, don't
-    ! mutate the shared, persistent RefHeightAboveGrd state.
+    ! The log() calls below need RefHeightAboveGrd > ZeroPlaneDispGrd. On the
+    ! WRF-Hydro path GroundRoughnessProperty gives RefHeightAboveGrd >=
+    ! ZeroPlaneDispGrd + RefHeightAboveSfc, with
+    ! RefHeightAboveSfc = ZLVL > 0, so a violation means bad input (e.g. a bad
+    ! forcing height reaching the bridge) and must stop the run rather than be
+    ! clamped. A bare `stop` on one MPI rank deadlocks the others, so under
+    ! MPP_LAND abort all ranks with MPI_Abort instead.
     RefHeightAboveGrdEff = RefHeightAboveGrd - ZeroPlaneDispGrd
     if ( RefHeightAboveGrdEff <= 0.0 ) then
-       RefHeightWarnCount = RefHeightWarnCount + 1
-       if ( RefHeightWarnCount <= 20 .or. mod(RefHeightWarnCount, 10000) == 0 ) then
-          write(*,*) "WARNING: RefHeightAboveGrd <= ZeroPlaneDispGrd (occurrence #", RefHeightWarnCount, "on this rank)"
-          if ( RefHeightWarnCount == 20 ) write(*,*) "WARNING: further occurrences on this rank logged only every 10000th time"
-       endif
-       RefHeightAboveGrdEff = RoughLenMomGrd  ! small positive floor -> TMPCM = log(1) = 0
+       write(*,*) "FATAL: RefHeightAboveGrd <= ZeroPlaneDispGrd in ResistanceBareGroundMostMod.F90: RefHeightAboveGrd =", &
+                  RefHeightAboveGrd, " ZeroPlaneDispGrd =", ZeroPlaneDispGrd
+#ifdef MPP_LAND
+       call mpp_land_abort()
+#else
+       stop "Error in ResistanceBareGroundMostMod.F90"
+#endif
     endif
 
     ! temporary drag coefficients
